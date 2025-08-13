@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super App - All-in-One Toolbox</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            onAuthStateChanged, 
+            signOut,
+            GoogleAuthProvider,
+            signInWithPopup
+        } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+        
+        window.firebase = {
+            initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, 
+            onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup
+        };
+    </script>
+    <!-- Image Background Removal Library -->
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@imgly/background-removal/dist/browser.js"></script>
+    <style>
+        :root.light { --bg-primary: #f3f4f6; --bg-secondary: #ffffff; --text-primary: #111827; --text-secondary: #6b7280; --border-color: #e5e7eb; --accent-color: #3b82f6; --accent-color-hover: #2563eb; }
+        :root.dark { --bg-primary: #111827; --bg-secondary: #1f2937; --text-primary: #f9fafb; --text-secondary: #9ca3af; --border-color: #374151; --accent-color: #60a5fa; --accent-color-hover: #3b82f6; }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.07), 0 4px 6px -2px rgba(0, 0, 0, 0.05); }
+        .input-field, .select-field { background-color: var(--bg-primary); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 0.5rem; padding: 0.5rem 0.75rem; }
+        .btn-primary { background-color: var(--accent-color); color: white; border-radius: 0.5rem; padding: 0.6rem 1rem; font-weight: 600; }
+        .btn-primary:hover { background-color: var(--accent-color-hover); }
+        .btn-secondary { background-color: var(--bg-primary); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 0.5rem; padding: 0.6rem 1rem; font-weight: 600; }
+        #image-editor-canvas-container { position: relative; width: 100%; height: 400px; }
+        #image-editor-canvas, #image-editor-drawing-canvas { position: absolute; top: 0; left: 0; }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Auth Container -->
+    <div id="auth-container" class="fixed inset-0 z-50 flex items-center justify-center hidden p-4 bg-gray-900 bg-opacity-60">
+        <div class="w-full max-w-md p-8 space-y-6 bg-[var(--bg-secondary)] rounded-2xl shadow-xl relative">
+            <button id="auth-close-btn" class="absolute top-4 right-4 p-2 rounded-full hover:bg-[var(--bg-primary)]"><i data-lucide="x"></i></button>
+            <div><h2 id="auth-title" class="text-center text-3xl font-extrabold">Sign In</h2></div>
+            <button id="google-signin-btn" class="w-full flex items-center justify-center gap-3 py-2.5 border border-[var(--border-color)] rounded-lg hover:bg-[var(--bg-primary)] transition-colors">
+                <svg class="w-5 h-5" viewBox="0 0 48 48"><path fill="#FFC107" d="M43.611,20.083H42V20H24v8h11.303c-1.649,4.657-6.08,8-11.303,8c-6.627,0-12-5.373-12-12s5.373-12,12-12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C12.955,4,4,12.955,4,24s8.955,20,20,20s20-8.955,20-20C44,22.659,43.862,21.35,43.611,20.083z"></path><path fill="#FF3D00" d="M6.306,14.691l6.571,4.819C14.655,15.108,18.961,12,24,12c3.059,0,5.842,1.154,7.961,3.039l5.657-5.657C34.046,6.053,29.268,4,24,4C16.318,4,9.656,8.337,6.306,14.691z"></path><path fill="#4CAF50" d="M24,44c5.166,0,9.86-1.977,13.409-5.192l-6.19-5.238C29.211,35.091,26.715,36,24,36c-5.202,0-9.619-3.317-11.283-7.946l-6.522,5.025C9.505,39.556,16.227,44,24,44z"></path><path fill="#1976D2" d="M43.611,20.083H42V20H24v8h11.303c-0.792,2.237-2.231,4.166-4.087,5.571l6.19,5.238C39.712,34.464,44,28.756,44,24C44,22.659,43.862,21.35,43.611,20.083z"></path></svg>
+                <span>Continue with Google</span>
+            </button>
+            <div class="relative"><div class="absolute inset-0 flex items-center"><div class="w-full border-t border-[var(--border-color)]"></div></div><div class="relative flex justify-center text-sm"><span class="px-2 bg-[var(--bg-secondary)] text-[var(--text-secondary)]">Or</span></div></div>
+            <form id="auth-form" class="space-y-6">
+                <input id="auth-email" type="email" autocomplete="email" required class="input-field w-full" placeholder="Email address">
+                <input id="auth-password" type="password" autocomplete="current-password" required class="input-field w-full" placeholder="Password">
+                <p id="auth-error" class="text-red-500 text-sm hidden"></p>
+                <button type="submit" id="auth-submit-btn" class="btn-primary w-full">Sign In</button>
+            </form>
+            <p class="text-center text-sm"><a href="#" id="auth-toggle-link" class="font-medium text-[var(--accent-color)] hover:text-[var(--accent-color-hover)]">Don't have an account? Sign Up</a></p>
+        </div>
+    </div>
+
+    <!-- App Container -->
+    <div id="app-container" class="min-h-screen">
+        <header class="bg-[var(--bg-secondary)] border-b border-[var(--border-color)] sticky top-0 z-20 shadow-sm"><div class="container mx-auto px-4 sm:px-6 lg:px-8"><div class="flex items-center justify-between h-16"><div class="flex items-center space-x-4"><i data-lucide="layout-grid" class="h-7 w-7 text-[var(--accent-color)]"></i><h1 class="text-xl font-bold">Super App</h1></div><div class="flex items-center space-x-2"><button id="theme-toggle" class="p-2 rounded-full hover:bg-[var(--bg-primary)]"><i data-lucide="sun" id="theme-icon-sun" class="h-5 w-5"></i><i data-lucide="moon" id="theme-icon-moon" class="h-5 w-5 hidden"></i></button>
+            <!-- User Menu Dropdown -->
+            <div id="user-menu-container" class="relative hidden">
+                <button id="user-menu-button" class="p-2 rounded-full hover:bg-[var(--bg-primary)]"><i data-lucide="more-vertical" class="h-5 w-5"></i></button>
+                <div id="user-menu-dropdown" class="absolute right-0 mt-2 w-56 origin-top-right bg-[var(--bg-secondary)] rounded-md shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none hidden" role="menu">
+                    <div class="py-1" role="none">
+                        <div class="px-4 py-3 border-b border-[var(--border-color)]">
+                            <p class="text-sm font-semibold text-[var(--text-primary)]">Signed in as</p>
+                            <p id="user-email-dropdown" class="text-sm truncate text-[var(--text-secondary)]"></p>
+                        </div>
+                        <div class="py-1">
+                           <a href="#" id="logout-btn-dropdown" class="flex items-center gap-2 px-4 py-2 text-sm text-red-500 hover:bg-[var(--bg-primary)]" role="menuitem"><i data-lucide="log-out" class="h-4 w-4"></i>Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button id="login-btn" class="btn-primary text-sm">Login</button>
+        </div></div></div></header>
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="text-center mb-12">
+                <h2 class="text-3xl md:text-4xl font-extrabold tracking-tight">Your All-in-One Digital Toolbox</h2>
+                <p class="mt-4 max-w-2xl mx-auto text-lg text-[var(--text-secondary)]">One login, countless tools. Find everything you need right here.</p>
+            </div>
+            <div class="search-bar sticky top-16 z-10 p-4 rounded-lg mb-8 bg-[var(--bg-secondary)] border border-[var(--border-color)]">
+                <div class="flex flex-col md:flex-row gap-4">
+                    <div class="relative flex-grow">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[var(--text-secondary)]"></i>
+                        <input type="text" id="search-input" placeholder="Search for a tool..." class="input-field w-full pl-10 pr-4 py-2 focus:ring-2 focus:ring-[var(--accent-color)] focus:outline-none">
+                    </div>
+                    <div id="filter-buttons" class="flex-shrink-0 flex flex-wrap gap-2 items-center"></div>
+                </div>
+            </div>
+            <div id="features-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6"></div>
+            <div id="no-results" class="text-center py-16 hidden">
+                <i data-lucide="folder-search" class="h-16 w-16 mx-auto text-[var(--text-secondary)]"></i>
+                <h3 class="mt-4 text-xl font-semibold">No Tools Found</h3>
+                <p class="mt-2 text-[var(--text-secondary)]">Try adjusting your search or filter.</p>
+            </div>
+        </main>
+        <div id="app-modal" class="app-modal-overlay fixed inset-0 z-30 flex items-center justify-center p-4 hidden"><div class="app-modal-content w-full max-w-4xl max-h-[90vh] rounded-xl shadow-2xl flex flex-col"><header class="flex items-center justify-between p-4 border-b border-[var(--border-color)] flex-shrink-0"><h3 id="app-modal-title" class="text-lg font-semibold"></h3><button id="app-modal-close" class="p-1 rounded-full hover:bg-[var(--bg-primary)]"><i data-lucide="x" class="h-5 w-5"></i></button></header><main id="app-modal-body" class="p-6 overflow-y-auto"></main></div></div>
+    </div>
+
+    <script type="module">
+        // --- FIREBASE SETUP ---
+        const { initializeApp, getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, GoogleAuthProvider, signInWithPopup } = window.firebase;
+        const firebaseConfig = { apiKey: "AIzaSyBRnZI0vKKz69Aj7Ns2zXFgKsbp8mQltRw", authDomain: "super-app-8703e.firebaseapp.com", projectId: "super-app-8703e", storageBucket: "super-app-8703e.appspot.com", messagingSenderId: "201923869092", appId: "1:201923869092:web:9de078705b4a53f363e931" };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        // --- GLOBAL ELEMENTS & AUTH LOGIC ---
+        const authContainer = document.getElementById('auth-container'), loginBtn = document.getElementById('login-btn'), authForm = document.getElementById('auth-form'), authTitle = document.getElementById('auth-title'), authSubmitBtn = document.getElementById('auth-submit-btn'), authToggleLink = document.getElementById('auth-toggle-link'), authErrorEl = document.getElementById('auth-error'), authEmailInput = document.getElementById('auth-email'), authPasswordInput = document.getElementById('auth-password'), googleSignInBtn = document.getElementById('google-signin-btn'), authCloseBtn = document.getElementById('auth-close-btn');
+        const userMenuContainer = document.getElementById('user-menu-container'), userMenuButton = document.getElementById('user-menu-button'), userMenuDropdown = document.getElementById('user-menu-dropdown'), userEmailDropdown = document.getElementById('user-email-dropdown'), logoutBtnDropdown = document.getElementById('logout-btn-dropdown');
+        let isLoginMode = true;
+
+        const showAuthError = msg => { authErrorEl.textContent = msg; authErrorEl.classList.remove('hidden'); };
+        const toggleAuthMode = () => { isLoginMode = !isLoginMode; authTitle.textContent = isLoginMode ? 'Sign In' : 'Sign Up'; authSubmitBtn.textContent = isLoginMode ? 'Sign In' : 'Sign Up'; authToggleLink.innerHTML = isLoginMode ? "Don't have an account? Sign Up" : "Already have an account? Sign In"; authErrorEl.classList.add('hidden'); authForm.reset(); };
+        
+        authToggleLink.onclick = e => { e.preventDefault(); toggleAuthMode(); };
+        loginBtn.onclick = () => authContainer.classList.remove('hidden');
+        authCloseBtn.onclick = () => authContainer.classList.add('hidden');
+        logoutBtnDropdown.onclick = e => { e.preventDefault(); signOut(auth).catch(err => console.error("Logout Error:", err)); };
+        googleSignInBtn.onclick = () => signInWithPopup(auth, googleProvider).catch(err => showAuthError(err.message));
+        authForm.onsubmit = e => { e.preventDefault(); const email = authEmailInput.value, password = authPasswordInput.value; authErrorEl.classList.add('hidden'); (isLoginMode ? signInWithEmailAndPassword : createUserWithEmailAndPassword)(auth, email, password).catch(err => showAuthError(err.message)); };
+
+        onAuthStateChanged(auth, user => {
+            if (user) {
+                authContainer.classList.add('hidden');
+                userMenuContainer.classList.remove('hidden');
+                loginBtn.classList.add('hidden');
+                userEmailDropdown.textContent = user.displayName || user.email;
+            } else {
+                userMenuContainer.classList.add('hidden');
+                userMenuDropdown.classList.add('hidden');
+                loginBtn.classList.remove('hidden');
+            }
+        });
+
+        userMenuButton.onclick = (e) => { e.stopPropagation(); userMenuDropdown.classList.toggle('hidden'); };
+        window.onclick = (e) => { if (!userMenuContainer.contains(e.target)) userMenuDropdown.classList.add('hidden'); };
+
+        // --- THEME & CORE APP LOGIC ---
+        const appModal = document.getElementById('app-modal'), appModalTitle = document.getElementById('app-modal-title'), appModalBody = document.getElementById('app-modal-body'), appModalClose = document.getElementById('app-modal-close'), themeToggle = document.getElementById('theme-toggle'), sunIcon = document.getElementById('theme-icon-sun'), moonIcon = document.getElementById('theme-icon-moon');
+        const applyTheme = t => { document.documentElement.className = t; sunIcon.classList.toggle('hidden', t === 'dark'); moonIcon.classList.toggle('hidden', t === 'light'); };
+        applyTheme(localStorage.getItem('theme') || 'light');
+        themeToggle.onclick = () => { const t = document.documentElement.classList.contains('dark') ? 'light' : 'dark'; localStorage.setItem('theme', t); applyTheme(t); };
+        
+        // --- APP MODAL LOGIC ---
+        let currentAppCleanup = null;
+        function openApp(feature) {
+            if (currentAppCleanup) currentAppCleanup();
+            appModalTitle.textContent = feature.name;
+            appModalBody.innerHTML = `<div class="flex justify-center items-center p-16"><i data-lucide="loader-circle" class="animate-spin h-10 w-10"></i></div>`;
+            lucide.createIcons();
+            const renderer = appRenderers[feature.id];
+            if (renderer) currentAppCleanup = renderer(appModalBody);
+            else appModalBody.innerHTML = `<div class="text-center p-8"><i data-lucide="construct" class="h-12 w-12 mx-auto text-[var(--text-secondary)]"></i><h4 class="mt-4 font-semibold">Error</h4><p class="text-[var(--text-secondary)] mt-1">This tool could not be loaded.</p></div>`;
+            lucide.createIcons();
+            appModal.classList.remove('hidden');
+        }
+        function closeApp() { if (currentAppCleanup) { currentAppCleanup(); currentAppCleanup = null; } appModal.classList.add('hidden'); }
+        appModalClose.onclick = closeApp;
+        appModal.onclick = e => { if (e.target === appModal) closeApp(); };
+
+        // --- APP IMPLEMENTATIONS ---
+        const appRenderers = {
+            notepad: (c) => { c.innerHTML = `<div class="flex flex-col h-full"><textarea id="n-text" class="w-full flex-grow h-96 p-4 input-field" placeholder="Start typing..."></textarea><div class="flex items-center justify-between mt-4"><span id="n-status" class="text-sm text-[var(--text-secondary)]"></span><button id="n-save" class="btn-primary">Save</button></div></div>`; const t=document.getElementById("n-text"),s=document.getElementById("n-save"),a=document.getElementById("n-status");t.value=localStorage.getItem("notepad")||"",a.textContent="Loaded.",s.onclick=()=>{localStorage.setItem("notepad",t.value),a.textContent=`Saved: ${new Date().toLocaleTimeString()}`}; return ()=>{} },
+            todo: (c) => { c.innerHTML = `<div class="space-y-4"><form id="t-form" class="flex gap-2"><input type="text" id="t-input" class="input-field flex-grow" placeholder="Add task..." required><button type="submit" class="btn-primary">Add</button></form><ul id="t-list" class="space-y-2"></ul></div>`; const f=document.getElementById("t-form"),i=document.getElementById("t-input"),l=document.getElementById("t-list"); let t=JSON.parse(localStorage.getItem("tasks"))||[]; const s=()=>localStorage.setItem("tasks",JSON.stringify(t)),r=()=>{l.innerHTML=t.length?t.map(e=>`<li class="todo-item flex items-center p-3 rounded-lg bg-[var(--bg-primary)] ${e.completed?"completed":""}" data-id="${e.id}"><input type="checkbox" ${e.completed?"checked":""} class="h-5 w-5 rounded text-[var(--accent-color)] mr-3 cursor-pointer"><span>${e.text}</span><button class="delete-todo p-1 ml-auto text-[var(--text-secondary)] hover:text-red-500"><i data-lucide="trash-2" class="h-4 w-4"></i></button></li>`).join(""):`<li class="text-center text-[var(--text-secondary)] p-4">Empty!</li>`,lucide.createIcons()};f.onsubmit=e=>{e.preventDefault(),i.value.trim()&&(t.unshift({id:Date.now(),text:i.value.trim(),completed:!1}),i.value="",s(),r())},l.onclick=e=>{const i=e.target.closest("li")?.dataset.id;if(i){const a=t.find(t=>t.id==i);e.target.type==="checkbox"?a.completed=!a.completed:e.target.closest(".delete-todo")&&(t=t.filter(t=>t.id!=i)),s(),r()}},r(); return ()=>{} },
+            calendar: (c) => { c.innerHTML = `<div class="text-center"><div class="flex justify-between items-center mb-4"><button id="c-prev" class="p-2 rounded-md hover:bg-[var(--bg-primary)]"><i data-lucide="chevron-left"></i></button><h3 id="c-my" class="text-xl font-semibold"></h3><button id="c-next" class="p-2 rounded-md hover:bg-[var(--bg-primary)]"><i data-lucide="chevron-right"></i></button></div><div id="c-grid" class="grid grid-cols-7 gap-1"></div></div>`; const m=document.getElementById("c-my"),g=document.getElementById("c-grid"),p=document.getElementById("c-prev"),n=document.getElementById("c-next"); let d=new Date; const r=()=>{d.setDate(1);const t=d.getMonth(),e=d.getFullYear();m.textContent=`${d.toLocaleString("default",{month:"long"})} ${e}`,g.innerHTML=["Su","Mo","Tu","We","Th","Fr","Sa"].map(t=>`<div class="font-bold text-center text-[var(--text-secondary)] p-2">${t}</div>`).join("");const o=d.getDay(),a=new Date(e,t+1,0).getDate(),l=new Date(e,t,0).getDate();for(let c=o;c>0;c--)g.innerHTML+=`<div class="text-center text-[var(--text-secondary)] p-2 opacity-50">${l-c+1}</div>`;for(let i=1;i<=a;i++){const s=i===new Date().getDate()&&t===new Date().getMonth()&&e===new Date().getFullYear();g.innerHTML+=`<div class="text-center p-2 ${s?"bg-[var(--accent-color)] text-white rounded-full":""}">${i}</div>`}};p.onclick=()=>{d.setMonth(d.getMonth()-1),r()},n.onclick=()=>{d.setMonth(d.getMonth()+1),r()},r(); return ()=>{} },
+            pomodoro: (c) => { c.innerHTML = `<div class="flex flex-col items-center text-center"><div id="p-tabs" class="flex space-x-2 mb-6 p-1 bg-[var(--bg-primary)] rounded-lg"><button data-mode="pomodoro" class="p-tab btn-primary px-4 py-2 rounded-md text-sm">Pomodoro</button><button data-mode="shortBreak" class="p-tab px-4 py-2 rounded-md text-sm">Short Break</button><button data-mode="longBreak" class="p-tab px-4 py-2 rounded-md text-sm">Long Break</button></div><div id="p-time" class="text-8xl font-bold mb-6">25:00</div><div class="flex space-x-4"><button id="p-start" class="btn-primary w-28 text-lg">START</button><button id="p-reset" class="btn-secondary w-28 text-lg">RESET</button></div></div>`; let t,e,o=!1,a="pomodoro";const n={pomodoro:1500,shortBreak:300,longBreak:900},i=document.getElementById("p-time"),s=document.getElementById("p-start"),l=document.getElementById("p-reset"),d=document.querySelectorAll(".p-tab");const r=()=>{const t=Math.floor(e/60).toString().padStart(2,"0"),o=Math.floor(e%60).toString().padStart(2,"0");i.textContent=`${t}:${o}`},u=t=>{a=t,clearInterval(e),o=!1,s.textContent="START",e=n[a],r(),d.forEach(e=>{e.classList.toggle("btn-primary",e.dataset.mode===t)})},m=()=>{o?(clearInterval(t),s.textContent="START"):(s.textContent="PAUSE",Tone.context.state!=="running"&&Tone.start(),t=setInterval(()=>{e--,r(),e<=0&&(clearInterval(t),o=!1,s.textContent="START",new Tone.Synth().toDestination().triggerAttackRelease("C5","0.5"),u("pomodoro"===a?"shortBreak":"pomodoro"))},1e3)),o=!o};d.forEach(t=>t.onclick=()=>u(t.dataset.mode)),s.onclick=m,l.onclick=()=>u(a),u("pomodoro");return()=>{clearInterval(t)} },
+            unitConverter: (c) => { c.innerHTML = `<div class="space-y-4"><select id="u-type" class="select-field w-full"><option value="length">Length</option><option value="weight">Weight</option><option value="temp">Temperature</option></select><div class="flex items-center gap-4"><div class="w-1/2"><input type="number" id="u-input" class="input-field w-full" value="1"><select id="u-from" class="select-field w-full mt-2"></select></div><i data-lucide="arrow-right-left" class="h-6 w-6 text-[var(--text-secondary)]"></i><div class="w-1/2"><input type="text" id="u-output" readonly class="input-field w-full bg-[var(--bg-primary)]"><select id="u-to" class="select-field w-full mt-2"></select></div></div></div>`; const t=document.getElementById("u-type"),e=document.getElementById("u-from"),o=document.getElementById("u-to"),a=document.getElementById("u-input"),n=document.getElementById("u-output"),i={length:{Meters:1,Kilometers:1e3,Miles:1609.34,Feet:.3048},weight:{Grams:1,Kilograms:1e3,Pounds:453.592,Ounces:28.3495},temp:{Celsius:"c",Fahrenheit:"f",Kelvin:"k"}},s=()=>{const t=a.value;if(isNaN(t))return;const l=type.value;if("temp"===l){let r;e.value==="c"?r=parseFloat(t):e.value==="f"?r=(t-32)*5/9:e.value==="k"&&(r=t-273.15),o.value==="c"?n.value=r.toFixed(2):o.value==="f"?n.value=(1.8*r+32).toFixed(2):o.value==="k"&&(n.value=(r+273.15).toFixed(2))}else{const d=e.value,c=o.value;n.value=(t*d/c).toFixed(4)}},l=()=>{const a=t.value;e.innerHTML="",o.innerHTML="",Object.keys(i[a]).forEach(t=>{e.innerHTML+=`<option value="${i[a][t]}">${t}</option>`,o.innerHTML+=`<option value="${i[a][t]}">${t}</option>`}),o.selectedIndex=1,s()};t.onchange=l,a.oninput=s,e.onchange=s,o.onchange=s,l(); return ()=>{} },
+            currencyConverter: (c) => { c.innerHTML = `<div class="space-y-4"><div class="flex items-center gap-4"><div class="w-1/2"><input type="number" id="cc-input" class="input-field w-full" value="1"><select id="cc-from" class="select-field w-full mt-2"></select></div><i data-lucide="arrow-right-left" class="h-6 w-6 text-[var(--text-secondary)]"></i><div class="w-1/2"><div id="cc-output" class="p-2 h-10 flex items-center font-semibold text-lg">...</div><select id="cc-to" class="select-field w-full mt-2"></select></div></div><p id="cc-rate" class="text-sm text-center text-[var(--text-secondary)]"></p></div>`; const t=document.getElementById("cc-from"),e=document.getElementById("cc-to"),o=document.getElementById("cc-input"),a=document.getElementById("cc-output"),n=document.getElementById("cc-rate");let i={};const s=()=>{if(!i.rates)return;const s=t.value,l=e.value,d=o.value;if(isNaN(d))return;const r=i.rates[l]/i.rates[s];a.textContent=(d*r).toFixed(2),n.textContent=`1 ${s} = ${r.toFixed(4)} ${l}`},l=()=>{fetch("https://api.exchangerate-api.com/v4/latest/USD").then(t=>t.json()).then(o=>{i=o,Object.keys(i.rates).forEach(o=>{t.innerHTML+=`<option value="${o}">${o}</option>`,e.innerHTML+=`<option value="${o}">${o}</option>`}),t.value="USD",e.value="EUR",s()}).catch(t=>{c.innerHTML=`<p class="text-center text-red-500">Could not fetch currency data.</p>`})};l(),o.oninput=s,t.onchange=s,e.onchange=s; return ()=>{} },
+            translator: (c) => { c.innerHTML = `<div class="space-y-4"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><select id="tl-from" class="select-field w-full mb-2"></select><textarea id="tl-from-text" class="input-field w-full h-32" placeholder="Enter text..."></textarea></div><div><select id="tl-to" class="select-field w-full mb-2"></select><textarea id="tl-to-text" readonly class="input-field w-full h-32 bg-[var(--bg-primary)]" placeholder="Translation..."></textarea></div></div><button id="tl-btn" class="btn-primary w-full">Translate</button></div>`; const t=document.getElementById("tl-from"),e=document.getElementById("tl-to"),o=document.getElementById("tl-from-text"),a=document.getElementById("tl-to-text"),n=document.getElementById("tl-btn"),i={Afrikaans:"af",Albanian:"sq",Amharic:"am",Arabic:"ar",Armenian:"hy",Azerbaijani:"az",Basque:"eu",Belarusian:"be",Bengali:"bn",Bosnian:"bs",Bulgarian:"bg",Catalan:"ca",Cebuano:"ceb",Chinese:"zh",Corsican:"co",Croatian:"hr",Czech:"cs",Danish:"da",Dutch:"nl",English:"en",Esperanto:"eo",Estonian:"et",Finnish:"fi",French:"fr",Frisian:"fy",Galician:"gl",Georgian:"ka",German:"de",Greek:"el",Gujarati:"gu",HaitianCreole:"ht",Hausa:"ha",Hawaiian:"haw",Hebrew:"he",Hindi:"hi",Hmong:"hmn",Hungarian:"hu",Icelandic:"is",Igbo:"ig",Indonesian:"id",Irish:"ga",Italian:"it",Japanese:"ja",Javanese:"jv",Kannada:"kn",Kazakh:"kk",Khmer:"km",Kinyarwanda:"rw",Korean:"ko",Kurdish:"ku",Kyrgyz:"ky",Lao:"lo",Latin:"la",Latvian:"lv",Lithuanian:"lt",Luxembourgish:"lb",Macedonian:"mk",Malagasy:"mg",Malay:"ms",Malayalam:"ml",Maltese:"mt",Maori:"mi",Marathi:"mr",Mongolian:"mn",Myanmar:"my",Nepali:"ne",Norwegian:"no",Nyanja:"ny",Odia:"or",Pashto:"ps",Persian:"fa",Polish:"pl",Portuguese:"pt",Punjabi:"pa",Romanian:"ro",Russian:"ru",Samoan:"sm",ScotsGaelic:"gd",Serbian:"sr",Sesotho:"st",Shona:"sn",Sindhi:"sd",Sinhala:"si",Slovak:"sk",Slovenian:"sl",Somali:"so",Spanish:"es",Sundanese:"su",Swahili:"sw",Swedish:"sv",Tagalog:"tl",Tajik:"tg",Tamil:"ta",Tatar:"tt",Telugu:"te",Thai:"th",Turkish:"tr",Turkmen:"tk",Ukrainian:"uk",Urdu:"ur",Uyghur:"ug",Uzbek:"uz",Vietnamese:"vi",Welsh:"cy",Xhosa:"xh",Yiddish:"yi",Yoruba:"yo",Zulu:"zu"};Object.keys(i).forEach(o=>{t.innerHTML+=`<option value="${i[o]}">${o}</option>`,e.innerHTML+=`<option value="${i[o]}">${o}</option>`}),t.value="en",e.value="bn",n.onclick=()=>{const n=o.value.trim();n&&(a.value="Translating...",fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(n)}&langpair=${t.value}|${e.value}`).then(t=>t.json()).then(t=>{a.value=t.responseData.translatedText}).catch(t=>{a.value="Translation failed."}))}; return ()=>{} },
+            imageEditor: (c) => {
+                c.innerHTML = `<div class="space-y-4"><input type="file" id="ie-upload" accept="image/*" class="input-field w-full"><div id="image-editor-canvas-container" class="bg-[var(--bg-primary)] rounded-lg flex items-center justify-center"><canvas id="image-editor-canvas"></canvas><canvas id="image-editor-drawing-canvas"></canvas></div><div class="flex flex-wrap gap-2 items-center" id="ie-controls"></div></div>`;
+                const upload = document.getElementById('ie-upload'), canvas = document.getElementById('image-editor-canvas'), drawingCanvas = document.getElementById('image-editor-drawing-canvas'), controls = document.getElementById('ie-controls');
+                const ctx = canvas.getContext('2d'), drawCtx = drawingCanvas.getContext('2d');
+                let originalImage = null, currentTool = 'none';
+
+                const resizeCanvases = (img) => {
+                    const container = canvas.parentElement;
+                    const ratio = img.width / img.height;
+                    let newW = container.clientWidth;
+                    let newH = newW / ratio;
+                    if (newH > container.clientHeight) { newH = container.clientHeight; newW = newH * ratio; }
+                    canvas.width = drawingCanvas.width = newW;
+                    canvas.height = drawingCanvas.height = newH;
+                };
+                
+                upload.onchange = e => {
+                    const file = e.target.files[0]; if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = event => {
+                        originalImage = new Image();
+                        originalImage.onload = () => { resizeCanvases(originalImage); ctx.filter = 'none'; drawCtx.clearRect(0,0,drawCtx.canvas.width, drawCtx.canvas.height); ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height); };
+                        originalImage.src = event.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                };
+
+                const tools = {
+                    'Original': () => { if(!originalImage) return; ctx.filter = 'none'; ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height); },
+                    'Grayscale': () => { if(!originalImage) return; ctx.filter = 'grayscale(100%)'; ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height); },
+                    'Sepia': () => { if(!originalImage) return; ctx.filter = 'sepia(100%)'; ctx.drawImage(originalImage, 0, 0, canvas.width, canvas.height); },
+                    'Draw': () => { currentTool = 'draw'; drawCtx.globalCompositeOperation = 'source-over'; drawCtx.strokeStyle = '#ff0000'; drawCtx.lineWidth = 5; },
+                    'Blur Brush': () => { currentTool = 'blur'; },
+                    'Remove BG': async () => {
+                        if (!originalImage) return;
+                        const btn = document.querySelector('[data-tool="Remove BG"]');
+                        btn.textContent = 'Processing...'; btn.disabled = true;
+                        try {
+                            const config = { publicPath: 'https://cdn.jsdelivr.net/npm/@imgly/background-removal/dist/browser/' };
+                            const blob = await (await fetch(originalImage.src)).blob();
+                            const result = await removeBackground(blob, config);
+                            const url = URL.createObjectURL(result);
+                            originalImage.src = url; // This will trigger the onload event
+                        } catch (error) {
+                            console.error("Background removal failed:", error);
+                            alert("Background removal failed. Please try a different image.");
+                        } finally {
+                           btn.textContent = 'Remove BG'; btn.disabled = false;
+                        }
+                    },
+                    'Download': () => {
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCtx.drawImage(canvas, 0, 0);
+                        tempCtx.drawImage(drawingCanvas, 0, 0);
+                        const link = document.createElement('a');
+                        link.download = 'edited-image.png';
+                        link.href = tempCanvas.toDataURL();
+                        link.click();
+                    }
+                };
+                Object.keys(tools).forEach(name => { const btn = document.createElement('button'); btn.textContent = name; btn.className = 'btn-secondary text-sm'; btn.dataset.tool = name; btn.onclick = tools[name]; controls.appendChild(btn); });
+
+                let drawing = false;
+                const getPos = (e) => { const rect = drawingCanvas.getBoundingClientRect(); return { x: (e.clientX || e.touches[0].clientX) - rect.left, y: (e.clientY || e.touches[0].clientY) - rect.top }; };
+                const start = e => { if(currentTool !== 'draw' && currentTool !== 'blur') return; drawing = true; draw(e); };
+                const stop = () => { drawing = false; drawCtx.beginPath(); };
+                const draw = e => {
+                    if (!drawing) return; e.preventDefault();
+                    const {x, y} = getPos(e);
+                    if (currentTool === 'draw') { drawCtx.lineCap = 'round'; drawCtx.lineTo(x, y); drawCtx.stroke(); drawCtx.beginPath(); drawCtx.moveTo(x, y); }
+                    if (currentTool === 'blur') {
+                        const blurSize = 25;
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+                        const tempCtx = tempCanvas.getContext('2d');
+                        tempCtx.filter = 'blur(4px)';
+                        tempCtx.drawImage(canvas, 0, 0);
+                        ctx.save();
+                        ctx.beginPath();
+                        ctx.arc(x, y, blurSize / 2, 0, Math.PI * 2);
+                        ctx.clip();
+                        ctx.drawImage(tempCanvas, 0, 0);
+                        ctx.restore();
+                    }
+                };
+                drawingCanvas.onmousedown = start; drawingCanvas.onmouseup = stop; drawingCanvas.onmousemove = draw;
+                drawingCanvas.ontouchstart = start; drawingCanvas.ontouchend = stop; drawingCanvas.ontouchmove = draw;
+                return () => {};
+            },
+            drawingBoard: (c) => { c.innerHTML = `<div class="space-y-4"><div class="flex flex-wrap gap-2 items-center"><label>Color:</label><input type="color" id="db-color" value="#000000" class="p-1 h-10 w-10 bg-transparent"><label class="ml-4">Size:</label><input type="range" id="db-size" min="1" max="50" value="5"><button id="db-clear" class="btn-secondary ml-auto">Clear</button></div><canvas id="db-canvas" class="rounded-lg bg-white" width="700" height="400"></canvas></div>`; const t=document.getElementById("db-canvas"),e=document.getElementById("db-color"),o=document.getElementById("db-size"),a=document.getElementById("db-clear"),n=t.getContext("2d");let i=!1;const s=e=>{i=!0,l(e)},d=()=>{i=!1,n.beginPath()},l=e=>{if(!i)return;e.preventDefault();const o=t.getBoundingClientRect(),a=(e.clientX||e.touches[0].clientX)-o.left,s=(e.clientY||e.touches[0].clientY)-o.top;n.lineWidth=size.value,n.lineCap="round",n.strokeStyle=color.value,n.lineTo(a,s),n.stroke(),n.beginPath(),n.moveTo(a,s)};a.onclick=()=>n.clearRect(0,0,t.width,t.height),t.onmousedown=s,t.onmouseup=d,t.onmousemove=l,t.ontouchstart=s,t.ontouchend=d,t.ontouchmove=l; return ()=>{} },
+            qrCodeGenerator: (c) => { c.innerHTML = `<div class="space-y-4 text-center"><div id="qr-container" class="w-48 h-48 mx-auto bg-[var(--bg-primary)] rounded-lg flex items-center justify-center"><span class="text-sm text-[var(--text-secondary)]">QR Code will appear here</span></div><input id="qr-input" type="text" class="input-field w-full text-center" placeholder="Enter text or URL"><div class="flex gap-2"><button id="qr-gen" type="button" class="btn-primary w-full">Generate</button><button id="qr-dl" type="button" class="btn-secondary w-full" disabled>Download</button></div></div>`; const t=document.getElementById("qr-input"),e=document.getElementById("qr-gen"),o=document.getElementById("qr-dl"),a=document.getElementById("qr-container");e.onclick=()=>{const e=t.value.trim();if(!e)return;a.innerHTML="",new QRCode(a,{text:e,width:192,height:192,colorDark:document.documentElement.classList.contains("dark")?"#f9fafb":"#111827",colorLight:document.documentElement.classList.contains("dark")?"#1f2937":"#ffffff"}),o.disabled=!1},o.onclick=()=>{const t=a.querySelector("img");if(!t)return;const e=document.createElement("a");e.download="qrcode.png",e.href=t.src,document.body.appendChild(e),e.click(),document.body.removeChild(e)}; return ()=>{} },
+            passwordGenerator: (c) => { c.innerHTML = `<div class="space-y-6"><div class="relative"><input id="pg-output" type="text" readonly class="input-field w-full p-4 pr-12 text-lg font-mono" placeholder="Password..."><button id="pg-copy" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-md hover:bg-[var(--bg-primary)]"><i data-lucide="copy" class="h-5 w-5"></i></button></div><div class="space-y-4"><div class="flex items-center justify-between"><label>Length</label><span id="pg-len-val" class="font-semibold w-12 text-center">16</span></div><input id="pg-len" type="range" min="8" max="64" value="16" class="w-full h-2 bg-[var(--bg-primary)] rounded-lg appearance-none cursor-pointer"></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-4"><label class="flex items-center space-x-3 p-3 rounded-lg bg-[var(--bg-primary)]"><input type="checkbox" id="pg-upper" checked class="h-5 w-5 rounded text-[var(--accent-color)]"><span>Uppercase</span></label><label class="flex items-center space-x-3 p-3 rounded-lg bg-[var(--bg-primary)]"><input type="checkbox" id="pg-lower" checked class="h-5 w-5 rounded text-[var(--accent-color)]"><span>Lowercase</span></label><label class="flex items-center space-x-3 p-3 rounded-lg bg-[var(--bg-primary)]"><input type="checkbox" id="pg-num" checked class="h-5 w-5 rounded text-[var(--accent-color)]"><span>Numbers</span></label><label class="flex items-center space-x-3 p-3 rounded-lg bg-[var(--bg-primary)]"><input type="checkbox" id="pg-sym" checked class="h-5 w-5 rounded text-[var(--accent-color)]"><span>Symbols</span></label></div><button id="pg-gen" class="btn-primary w-full text-lg">Generate</button></div>`; const t=document.getElementById("pg-output"),e=document.getElementById("pg-len"),o=document.getElementById("pg-len-val"),a=document.getElementById("pg-upper"),n=document.getElementById("pg-lower"),i=document.getElementById("pg-num"),s=document.getElementById("pg-sym"),l=document.getElementById("pg-gen"),d=document.getElementById("pg-copy"),r={u:"ABCDEFGHIJKLMNOPQRSTUVWXYZ",l:"abcdefghijklmnopqrstuvwxyz",n:"0123456789",s:"!@#$%^&*()_+"},u=()=>{const i=e.value;let s="";a.checked&&(s+=r.u),n.checked&&(s+=r.l),i.checked&&(s+=r.n),s.checked&&(s+=r.s),t.value=s?Array.from({length:i},()=>s.charAt(Math.floor(Math.random()*s.length))).join(""): "Select a character set."};e.oninput=()=>{o.textContent=e.value},l.onclick=u,d.onclick=()=>{if(!t.value||t.value.startsWith("Select"))return;const e=document.createElement("textarea");e.value=t.value,document.body.appendChild(e),e.select();try{document.execCommand("copy"),d.innerHTML=`<i data-lucide="check" class="h-5 w-5 text-green-500"></i>`,lucide.createIcons(),setTimeout(()=>{d.innerHTML=`<i data-lucide="copy" class="h-5 w-5"></i>`,lucide.createIcons()},2e3)}catch(c){console.error(c)}document.body.removeChild(e)},u(); return ()=>{} },
+            weather: (c) => { const e=(t,e)=>{fetch(`https://api.open-meteo.com/v1/forecast?latitude=${t}&longitude=${e}&current_weather=true`).then(t=>t.json()).then(t=>{const{temperature:e,weathercode:o}=t.current_weather;c.innerHTML=`<div class="text-center"><h2 class="text-6xl font-bold">${Math.round(e)}°C</h2><p class="text-xl text-[var(--text-secondary)]">${((t)=>{const e={0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Rime fog",51:"Light drizzle",61:"Slight rain",63:"Moderate rain",80:"Rain showers"};return e[t]||"Unknown"})(o)}</p><p class="text-sm mt-4">Based on your current location.</p></div>`}).catch(t=>{c.innerHTML=`<p class="text-center text-red-500">Could not fetch weather.</p>`})};navigator.geolocation?navigator.geolocation.getCurrentPosition(t=>e(t.coords.latitude,t.coords.longitude),()=>{c.innerHTML=`<p class="text-center text-red-500">Geolocation denied.</p>`}):c.innerHTML=`<p class="text-center text-red-500">Geolocation not supported.</p>`; return ()=>{} },
+            news: (c) => { c.innerHTML = `<ul id="news-list" class="space-y-4"><li>Loading news...</li></ul>`; const t=document.getElementById("news-list");fetch("https://api.rss2json.com/v1/api.json?rss_url=http%3A%2F%2Frss.cnn.com%2Frss%2Fcnn_topstories.rss").then(t=>t.json()).then(e=>{t.innerHTML="",e.items.slice(0,10).forEach(e=>{t.innerHTML+=`<li class="p-3 rounded-lg bg-[var(--bg-primary)]"><a href="${e.link}" target="_blank" rel="noopener noreferrer" class="font-semibold hover:text-[var(--accent-color)]">${e.title}</a><p class="text-sm text-[var(--text-secondary)]">${new Date(e.pubDate).toLocaleString()}</p></li>`})}).catch(e=>{t.innerHTML=`<li class="text-red-500">Failed to load news.</li>`}); return ()=>{} },
+        };
+
+        // --- DASHBOARD RENDERING & FILTERING ---
+        const featuresGrid = document.getElementById('features-grid'), searchInput = document.getElementById('search-input'), filterButtonsContainer = document.getElementById('filter-buttons'), noResultsMessage = document.getElementById('no-results');
+        const renderFeatures = (filteredFeatures) => {
+            featuresGrid.innerHTML = ''; noResultsMessage.classList.toggle('hidden', filteredFeatures.length > 0);
+            filteredFeatures.forEach(feature => {
+                const card = document.createElement('div');
+                card.className = 'card rounded-lg p-5 flex flex-col items-center text-center cursor-pointer transition-all duration-200'; card.dataset.appId = feature.id;
+                card.innerHTML = `<div class="mb-4 text-[var(--accent-color)]"><i data-lucide="${feature.icon}" class="h-10 w-10"></i></div><h3 class="font-semibold text-lg mb-1">${feature.name}</h3><p class="text-sm text-[var(--text-secondary)] flex-grow">${feature.description}</p>`;
+                featuresGrid.appendChild(card);
+            });
+            lucide.createIcons();
+        };
+        const renderFilterButtons = () => {
+            const categories = ['All', ...new Set(features.map(f => f.category))];
+            filterButtonsContainer.innerHTML = '';
+            categories.forEach(category => {
+                const button = document.createElement('button');
+                button.className = 'filter-btn px-3 py-1.5 text-sm font-medium rounded-md transition'; button.textContent = category; button.dataset.category = category;
+                if (category === 'All') button.classList.add('active');
+                filterButtonsContainer.appendChild(button);
+            });
+        };
+        const filterAndSearch = () => {
+            const searchTerm = searchInput.value.toLowerCase(), activeFilter = document.querySelector('.filter-btn.active').dataset.category;
+            const filteredFeatures = features.filter(feature => (activeFilter === 'All' || feature.category === activeFilter) && (feature.name.toLowerCase().includes(searchTerm) || feature.description.toLowerCase().includes(searchTerm)));
+            renderFeatures(filteredFeatures);
+        };
+        searchInput.oninput = filterAndSearch;
+        filterButtonsContainer.onclick = (e) => { if (e.target.tagName === 'BUTTON') { document.querySelector('.filter-btn.active').classList.remove('active'); e.target.classList.add('active'); filterAndSearch(); } };
+        featuresGrid.onclick = (e) => { const card = e.target.closest('.card'); if (card) { const appId = card.dataset.appId; const feature = features.find(f => f.id === appId); if (feature) openApp(feature); } };
+
+        // --- INITIALIZATION ---
+        const features = [ { id: 'notepad', name: 'Notepad', category: 'Productivity', icon: 'notebook-pen', description: 'Jot down notes.' }, { id: 'todo', name: 'To-Do List', category: 'Productivity', icon: 'list-checks', description: 'Organize your tasks.' }, { id: 'calendar', name: 'Calendar', category: 'Productivity', icon: 'calendar-days', description: 'View the calendar.' }, { id: 'pomodoro', name: 'Pomodoro Timer', category: 'Productivity', icon: 'timer', description: 'Boost your focus.' }, { id: 'unitConverter', name: 'Unit Converter', category: 'Productivity', icon: 'ruler', description: 'Convert measurements.' }, { id: 'currencyConverter', name: 'Currency Converter', category: 'Productivity', icon: 'dollar-sign', description: 'Latest exchange rates.' }, { id: 'translator', name: 'Translator', category: 'Productivity', icon: 'languages', description: 'Translate any language.' }, { id: 'imageEditor', name: 'Image Editor', category: 'Media', icon: 'image', description: 'Edit your images.' }, { id: 'drawingBoard', name: 'Drawing Board', category: 'Media', icon: 'pencil-ruler', description: 'Unleash creativity.' }, { id: 'qrCodeGenerator', name: 'QR Code Generator', category: 'Utility', icon: 'qr-code', description: 'Create QR codes.' }, { id: 'passwordGenerator', name: 'Password Generator', category: 'Utility', icon: 'key-round', description: 'Generate passwords.' }, { id: 'weather', name: 'Weather', category: 'Utility', icon: 'cloud-sun', description: 'Get weather forecasts.' }, { id: 'news', name: 'News Aggregator', category: 'Entertainment', icon: 'newspaper', description: 'Latest headlines.' }, ];
+        
+        renderFilterButtons();
+        filterAndSearch();
+        lucide.createIcons();
+    </script>
+</body>
+</html>
